@@ -71,7 +71,7 @@ export function GetActionsList(
 ): CompanionActions {
 	const levelsChoices = GetLevelsChoiceConfigs(state)
 	const muteGroups = GetMuteGroupChoices(state)
-	const selectChoices = GetTargetChoices(state, {includeMain: true, numericIndex: true })
+	const selectChoices = GetTargetChoices(state, { skipDca: true, includeMain: true, numericIndex: true })
 
 	const sendOsc = (cmd: string, arg: osc.MetaArgument): void => {
 		try {
