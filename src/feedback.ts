@@ -1,6 +1,7 @@
 import { CompanionFeedbacks, CompanionFeedbackEvent, CompanionFeedbackBoolean } from '../../../instance_skel_types'
 import { X32State, X32Subscriptions } from './state'
 import {
+	GetTargetChoices,
 	GetMuteGroupChoices,
 	GetChannelSendChoices,
 	convertChoices,
@@ -30,6 +31,7 @@ export enum FeedbackId {
 	TalkbackTalk = 'talkback_talk',
 	OscillatorEnable = 'oscillator-enable',
 	OscillatorDestination = 'oscillator-destination',
+	DCASpill = 'dca_spill',
 }
 
 function getDataNumber(data: osc.MetaArgument[] | undefined, index: number): number | undefined {
@@ -58,6 +60,15 @@ export function GetFeedbacksList(
 ): CompanionFeedbacks {
 	const levelsChoices = GetLevelsChoiceConfigs(state)
 	const muteGroups = GetMuteGroupChoices(state)
+	const dcaSpillChoices = [{id:'0', label:'None'},
+							...GetTargetChoices(state, { skipBus: true, 
+														 skipMatrix: true, 
+														 skipInputs: true, 
+														 numericIndex: true
+														}).map((a) => { 
+															return { id: `${ +a.id+1 }`,
+																	 label: a.label }
+														})]
 
 	const feedbacks: { [id in FeedbackId]: CompanionFeedbackWithCallback | undefined } = {
 		[FeedbackId.Mute]: {
@@ -440,6 +451,43 @@ export function GetFeedbacksList(
 			},
 			unsubscribe: (evt: CompanionFeedbackEvent): void => {
 				const path = `/config/osc/dest`
+				unsubscribeFeedback(subs, path, evt)
+			},
+		},
+		[FeedbackId.DCASpill]: {
+			type: 'boolean',
+			label: 'Change from DCA Fill enabled state',
+			description: 'If DCA is on for the specified DCA, change style of the bank',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'DCA',
+					id: 'dca',
+					...convertChoices(dcaSpillChoices),
+				},
+				{
+					id: 'state',
+					type: 'checkbox',
+					label: 'On',
+					default: true,
+				},
+			],
+			style: {
+				bgcolor: self.rgb(0, 255, 127),
+				color: self.rgb(0, 0, 0),
+			},
+			callback: (evt: CompanionFeedbackEvent): boolean => {
+				const path = `/-stat/dcaspill`
+				const data = path ? state.get(path) : undefined
+				const isOn = getDataNumber(data, 0) == evt.options.dca
+				return isOn === !!evt.options.state
+			},
+			subscribe: (evt: CompanionFeedbackEvent): void => {
+				const path = `/-stat/dcaspill`
+				subscribeFeedback(ensureLoaded, subs, path, evt)
+			},
+			unsubscribe: (evt: CompanionFeedbackEvent): void => {
+				const path = `/-stat/dcaspill`
 				unsubscribeFeedback(subs, path, evt)
 			},
 		},

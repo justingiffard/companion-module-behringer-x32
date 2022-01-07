@@ -55,6 +55,7 @@ export enum ActionId {
 	GoScene = 'go_scene',
 	GoSnip = 'go_snip',
 	Select = 'select',
+	DCASpill = 'dca_spill',
 	Tape = 'tape',
 	TalkbackTalk = 'talkback_talk',
 	OscillatorEnable = 'oscillator-enable',
@@ -72,6 +73,16 @@ export function GetActionsList(
 	const levelsChoices = GetLevelsChoiceConfigs(state)
 	const muteGroups = GetMuteGroupChoices(state)
 	const selectChoices = GetTargetChoices(state, { skipDca: true, includeMain: true, numericIndex: true })
+	const dcaSpillChoices = [{id:'0', label:'None'},
+							...GetTargetChoices(state, { skipBus: true, 
+														 skipMatrix: true, 
+														 skipInputs: true, 
+														 numericIndex: true
+														}).map((a) => { 
+															return { id: `${ +a.id+1 }`,
+																	 label: a.label }
+														})]
+
 
 	const sendOsc = (cmd: string, arg: osc.MetaArgument): void => {
 		try {
@@ -753,6 +764,36 @@ export function GetActionsList(
 					type: 'i',
 					value: getOptNumber(action, 'select'),
 				})
+			},
+		},
+		[ActionId.DCASpill]: {
+			label: 'Select DCA for DCA Spill on the console',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'DCA',
+					id: 'dca',
+					...convertChoices(dcaSpillChoices),
+				},
+			],
+			callback: (action): void => {
+				const currentState = state.get('/-stat/dcaspill') 
+				const currentVal = currentState && currentState[0]?.type === 'i' ? currentState[0]?.value : undefined
+				if (action.options.dca == currentVal) {
+					sendOsc(`/-stat/dcaspill`, {
+						type: 'i',
+						value: 0
+					})
+				} else {
+					sendOsc(`/-stat/dcaspill`, {
+						type: 'i',
+						value: getOptNumber(action, 'dca')
+					})
+				}
+
+			},
+			subscribe: (): void => {
+				ensureLoaded(`/-stat/dcaspill`)
 			},
 		},
 		[ActionId.Tape]: {
